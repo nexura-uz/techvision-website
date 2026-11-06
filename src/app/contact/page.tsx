@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { PageHead } from "@/components/section";
+import { GoogleReviewButton, PageHead } from "@/components/section";
 import { api, getSettings, getSocialLinks } from "@/lib/api";
 import { formatPhone, jsonLd, mapHref, storeJsonLd, telHref } from "@/lib/site";
 import type { Contact } from "@/lib/types";
@@ -23,7 +23,10 @@ export default async function Page() {
                             {[contact.phone_1, contact.phone_2].filter(Boolean).map((phone) => (
                                 <a key={phone} href={telHref(phone)} className="flex min-h-11 items-center text-lg font-medium hover:underline">{formatPhone(phone)}</a>
                             ))}
-                            <a href={mapHref(contact)} target="_blank" rel="noreferrer" className="btn btn-secondary my-4">Xaritada ochish</a>
+                            <div className="my-4 flex flex-col gap-3 md:items-start">
+                                <a href={mapHref(contact)} target="_blank" rel="noreferrer" className="btn btn-secondary">Xaritada ochish</a>
+                                <GoogleReviewButton />
+                            </div>
                         </div>
                         <iframe
                             title={`${contact.store_name || contact.address}: xarita`}

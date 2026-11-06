@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ImageSwiper } from "@/components/image-swiper";
 import { ProductGrid } from "@/components/product-card";
-import { CategoryList, NewsList, Section } from "@/components/section";
+import { CategoryList, GoogleReviewButton, NewsList, Section } from "@/components/section";
 import { api, getSettings, getSocialLinks } from "@/lib/api";
 import { formatPhone, jsonLd, mapHref, storeJsonLd, telHref } from "@/lib/site";
 import type { Banner, Contact, Faq, NamedImage, News, Paged, Product } from "@/lib/types";
@@ -104,11 +104,14 @@ export default async function Page() {
             {store && (
                 <Section title="Do'kon manzili" id="visit">
                     <p className="type-moment"><a href={mapHref(store)} target="_blank" rel="noreferrer" className="decoration-2 underline-offset-8 hover:underline">{store.address.replace(/ shahri$/, "")}</a></p>
-                    <div className="mt-4 max-w-md">
+                    <div className="mt-4">
                         <p className="text-lg">{store.region_details.name}, {store.address}</p>
                         {settings.working_hours && <p className="text-muted">{settings.working_hours}</p>}
                         {store.phone_1 && <a href={telHref(store.phone_1)} className="flex min-h-11 items-center font-medium hover:underline">{formatPhone(store.phone_1)}</a>}
-                        <a href={mapHref(store)} target="_blank" rel="noreferrer" className="btn btn-secondary mt-4">Xaritada ochish</a>
+                        <div className="mt-4 flex flex-col gap-3 md:flex-row">
+                            <a href={mapHref(store)} target="_blank" rel="noreferrer" className="btn btn-secondary">Xaritada ochish</a>
+                            <GoogleReviewButton />
+                        </div>
                     </div>
                 </Section>
             )}

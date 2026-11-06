@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { NAV } from "@/components/nav-links";
-import { formatPhone, mapHref, telHref } from "@/lib/site";
+import { formatPhone, GOOGLE_PROFILE_URL, mapHref, telHref } from "@/lib/site";
 import type { Contact, SiteSettings, SocialLink } from "@/lib/types";
 
 const PLATFORM_NAMES: Record<string, string> = {
@@ -30,6 +30,7 @@ export function Footer({ settings, socials, contacts }: { settings: SiteSettings
                     ))}
                 </nav>
                 <div className="flex flex-col items-start">
+                    <a href={GOOGLE_PROFILE_URL} target="_blank" rel="noreferrer" className="flex min-h-11 items-center hover:underline">Google xarita</a>
                     {socials.map((link) => (
                         <a key={link.id} href={link.url} target="_blank" rel="noreferrer" className="flex min-h-11 items-center hover:underline">
                             {PLATFORM_NAMES[link.platform] ?? new URL(link.url).hostname}

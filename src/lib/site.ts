@@ -1,6 +1,7 @@
 import type { SiteSettings, SocialLink } from "./types";
 
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://tech-vision.uz";
+export const GOOGLE_PROFILE_URL = "https://maps.app.goo.gl/2keXbNTYfXSxg1ZT8";
 
 /** Prices are stored in USD and shown in so'm at the rate set in Django admin. */
 export function formatPrice(usd: string | number, usdRate: string | undefined) {
@@ -33,6 +34,7 @@ export function storeJsonLd(settings: SiteSettings, socials: SocialLink[]) {
         url: SITE_URL,
         ...(settings.phone && { telephone: settings.phone }),
         address: { "@type": "PostalAddress", addressLocality: "Margilon", addressRegion: "Farg'ona", addressCountry: "UZ" },
-        sameAs: socials.map((link) => link.url),
+        hasMap: GOOGLE_PROFILE_URL,
+        sameAs: [...socials.map((link) => link.url), GOOGLE_PROFILE_URL],
     };
 }

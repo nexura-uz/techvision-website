@@ -1,8 +1,8 @@
-import { ChevronRightIcon } from "lucide-react";
+import { ChevronRightIcon, StarIcon } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { formatDate } from "@/lib/site";
+import { formatDate, GOOGLE_PROFILE_URL } from "@/lib/site";
 import type { NamedImage, News } from "@/lib/types";
 
 export function Section({ title, id, children }: { title: string; id?: string; children: ReactNode }) {
@@ -11,6 +11,14 @@ export function Section({ title, id, children }: { title: string; id?: string; c
             <h2 className="h2 mb-4 lg:mb-6">{title}</h2>
             {children}
         </section>
+    );
+}
+
+export function GoogleReviewButton() {
+    return (
+        <a href={GOOGLE_PROFILE_URL} target="_blank" rel="noreferrer" className="btn btn-secondary">
+            <StarIcon size={18} aria-hidden /> Google'da baho berish
+        </a>
     );
 }
 
