@@ -1,0 +1,187 @@
+@import "tailwindcss";
+
+/* Mobile first: base rules are for a phone; md and lg only add to them. */
+@theme {
+    --color-teal: #02c9ba;
+    --color-teal-deep: #0b6e66;
+    --color-ink: #141414;
+    --color-paper: #f5f5f5;
+    --color-line: #e2e2e2;
+    --color-muted: #5c5c5c;
+    --font-sans: var(--font-work-sans), system-ui, sans-serif;
+}
+
+@layer base {
+    html {
+        scroll-padding-top: 4.5rem;
+        -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+        background: white;
+        color: var(--color-ink);
+        line-height: 1.625;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    :focus-visible {
+        outline: 3px solid var(--color-teal-deep);
+        outline-offset: 2px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+            transition: none !important;
+            scroll-behavior: auto !important;
+        }
+    }
+}
+
+@layer components {
+    .wrap {
+        width: 100%;
+        max-width: 80rem;
+        margin-inline: auto;
+        padding-inline: 1rem;
+    }
+
+    @media (min-width: 48rem) {
+        .wrap {
+            padding-inline: 2rem;
+        }
+    }
+
+    .h1 {
+        font-size: clamp(2rem, 1.6rem + 2vw, 3rem);
+        line-height: 1.12;
+        letter-spacing: -0.02em;
+    }
+
+    .h2 {
+        font-size: clamp(1.5rem, 1.3rem + 1vw, 2rem);
+        line-height: 1.25;
+        letter-spacing: -0.01em;
+    }
+
+    .type-moment {
+        font-size: clamp(3rem, 2rem + 6vw, 6.5rem);
+        line-height: 1.02;
+        letter-spacing: -0.03em;
+    }
+
+    /* 16px stops iPhones zooming the page when a field is tapped. */
+    .field {
+        width: 100%;
+        min-height: 3rem;
+        border: 1px solid var(--color-muted);
+        border-radius: 2px;
+        background: white;
+        padding: 0.5rem 0.75rem;
+        font-size: 1rem;
+    }
+
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        width: 100%;
+        min-height: 3rem;
+        padding: 0.5rem 1.5rem;
+        border-radius: 2px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background-color 150ms, color 150ms, transform 100ms;
+    }
+
+    .btn:active {
+        transform: scale(0.98);
+    }
+
+    @media (min-width: 48rem) {
+        .btn {
+            width: auto;
+        }
+    }
+
+    .btn-primary {
+        background: var(--color-teal-deep);
+        color: white;
+    }
+
+    .btn-secondary {
+        box-shadow: inset 0 0 0 1px var(--color-ink);
+    }
+
+    .btn-ink {
+        background: var(--color-ink);
+        color: white;
+    }
+
+    @media (hover: hover) {
+        .btn-primary:hover {
+            background: var(--color-ink);
+        }
+
+        .btn-secondary:hover {
+            background: var(--color-ink);
+            color: white;
+        }
+
+        .btn-ink:hover {
+            background: white;
+            color: var(--color-ink);
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+        }
+
+        .card:hover img {
+            transform: scale(1.03);
+        }
+    }
+
+    .card {
+        transition: transform 150ms;
+    }
+
+    .card img {
+        transition: transform 200ms;
+    }
+
+    .card:active {
+        background: var(--color-paper);
+    }
+
+    .link {
+        color: var(--color-teal-deep);
+        text-decoration: underline;
+        text-underline-offset: 3px;
+    }
+}
+
+/* Tap-to-open on a phone, always open on desktop. Browsers without ::details-content keep the tap-to-open box. */
+@supports selector(::details-content) {
+    @media (min-width: 64rem) {
+        [data-filters] {
+            border: 0;
+        }
+
+        [data-filters] > summary {
+            display: none;
+        }
+
+        [data-filters] > form {
+            border: 0;
+            padding: 0;
+        }
+
+        [data-filters]::details-content {
+            content-visibility: visible;
+            height: auto;
+        }
+    }
+}
