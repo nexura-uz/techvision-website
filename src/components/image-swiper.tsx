@@ -16,7 +16,7 @@ const DRAG_START = 5;
 const DRAG_TO_CHANGE = 40;
 
 /** Moves only when the visitor asks: touch uses native swipe, a mouse can drag or use the arrows. The next image shows at the edge so there is clearly more. */
-export function ImageSwiper({ slides, frame = "aspect-video bg-paper lg:aspect-[1200/504]", fit = "object-cover", sizes = "(min-width: 1280px) 1216px, 100vw" }: {
+export function ImageSwiper({ slides, frame = "aspect-video bg-paper lg:aspect-[1200/504]", fit = "object-cover", sizes = "(min-width: 1408px) 1344px, 100vw" }: {
     slides: Slide[];
     frame?: string;
     fit?: string;
