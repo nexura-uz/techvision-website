@@ -31,7 +31,7 @@ export function CategoryList({ categories, base = "/categories" }: { categories:
                 <li key={category.id} className="border-b border-line">
                     <Link href={`${base}/${category.slug}`} className="card flex min-h-16 items-center gap-3 py-2">
                         <span className="relative size-12 shrink-0 overflow-hidden">
-                            <Image src={category.image} alt="" fill sizes="48px" className="object-contain" />
+                            <Image src={category.image} alt="" fill sizes="48px" unoptimized={category.image.endsWith(".svg")} className="object-contain" />
                         </span>
                         <span className="flex-1 font-medium">{category.name}</span>
                         <ChevronRightIcon size={20} aria-hidden className="text-muted" />

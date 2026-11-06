@@ -1,6 +1,6 @@
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
-import { Work_Sans } from "next/font/google";
+import localFont from "next/font/local";
 import type { ReactNode } from "react";
 import { ActionBar } from "@/components/action-bar";
 import { Footer } from "@/components/footer";
@@ -9,7 +9,8 @@ import { api, getSettings, getSocialLinks } from "@/lib/api";
 import { SITE_URL } from "@/lib/site";
 import type { Contact } from "@/lib/types";
 
-const workSans = Work_Sans({ subsets: ["latin"], weight: ["400", "500"], variable: "--font-work-sans" });
+// Kept in the repo so a build never depends on reaching Google Fonts.
+const workSans = localFont({ src: "./fonts/work-sans-latin.woff2", weight: "400 500", display: "swap", variable: "--font-work-sans" });
 
 export const metadata: Metadata = {
     metadataBase: new URL(SITE_URL),
