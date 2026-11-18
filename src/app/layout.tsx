@@ -1,36 +1,43 @@
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
-import type { ReactNode } from "react";
+import { type ReactNode, Suspense } from "react";
 import { ActionBar } from "@/components/action-bar";
+import { CartToast } from "@/components/cart-toast";
+import { NavProgress } from "@/components/nav-progress";
 import { Footer } from "@/components/footer";
 import { Header } from "@/components/header";
-import { api, getSettings, getSocialLinks } from "@/lib/api";
-import { SITE_URL } from "@/lib/site";
-import type { Contact } from "@/lib/types";
+import { SITE_URL, getCategories, getPages, getSettings } from "@/lib/api";
+import { cartCount, readCart } from "@/lib/cart";
 
-// Kept in the repo so a build never depends on reaching Google Fonts.
-const workSans = localFont({ src: "./fonts/work-sans-latin.woff2", weight: "400 500", display: "swap", variable: "--font-work-sans" });
+// kept in the repo, so a build never depends on reaching Google Fonts
+const inter = localFont({ src: "./fonts/inter-latin.woff2", weight: "100 900", display: "swap", variable: "--font-inter" });
+const unbounded = localFont({ src: "./fonts/unbounded-latin.woff2", weight: "200 900", display: "swap", variable: "--font-unbounded" });
 
 export const metadata: Metadata = {
-    metadataBase: new URL(SITE_URL),
-    title: { default: "TECHVISION", template: "%s | TECHVISION" },
-    openGraph: { siteName: "TECHVISION", locale: "uz_UZ", type: "website" },
-    other: { "page-type": "place", "site-kind": "other", "page-kind": "place" },
+  metadataBase: new URL(SITE_URL),
+  title: { default: "TECHVISION: kompyuter do'koni va servis markazi", template: "%s | TECHVISION" },
+  description: "Noutbuk, kompyuter, monitor, printer va kuzatuv kameralari. Ta'mirlash va kamera o'rnatish.",
+  openGraph: { siteName: "TECHVISION", locale: "uz_UZ", type: "website" },
 };
 
-export const viewport: Viewport = { themeColor: "#ffffff", viewportFit: "cover" };
+// matches the dark header, so the phone's status bar blends into it
+export const viewport: Viewport = { themeColor: "#141414", viewportFit: "cover" };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
-    const [settings, socials, contacts] = await Promise.all([getSettings(), getSocialLinks(), api<Contact[]>("contacts/")]);
-    return (
-        <html lang="uz" data-type="place" className={workSans.variable}>
-            <body className="flex min-h-dvh flex-col font-sans">
-                <Header settings={settings} />
-                <main className="flex-1">{children}</main>
-                <Footer settings={settings} socials={socials} contacts={contacts} />
-                <ActionBar settings={settings} socials={socials} />
-            </body>
-        </html>
-    );
+  const [settings, categories, pages, cart] = await Promise.all([getSettings(), getCategories(), getPages(), readCart()]);
+  return (
+    <html lang="uz" className={`${inter.variable} ${unbounded.variable}`}>
+      <body className="flex min-h-dvh flex-col font-sans">
+        {/* keyboard users: the first Tab shows this, so they can skip the header's menus */}
+        <a href="#main" className="sr-only z-[80] rounded-lg bg-teal px-4 py-3 font-semibold text-ink focus:not-sr-only focus:fixed focus:top-3 focus:left-3">Asosiy qismga o'tish</a>
+        <Suspense><NavProgress /></Suspense>
+        <Header settings={settings} categories={categories} cartCount={cartCount(cart)} />
+        <main id="main" tabIndex={-1} className="flex-1 outline-none">{children}</main>
+        <Footer settings={settings} pages={pages} />
+        <ActionBar settings={settings} />
+        <CartToast />
+      </body>
+    </html>
+  );
 }

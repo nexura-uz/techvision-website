@@ -1,135 +1,225 @@
-import { SlidersHorizontalIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import Form from "next/form";
 import Link from "next/link";
-import { ProductGrid } from "@/components/product-card";
-import { Pagination } from "@/components/section";
-import { api, API_URL, getSettings } from "@/lib/api";
-import type { NamedImage, Paged, Product } from "@/lib/types";
+import { type Category, getBrands, getProducts } from "@/lib/api";
+import { som } from "@/lib/format";
+import { AutoSubmit } from "./auto-submit";
+import { FilterSheet } from "./filter-sheet";
+import { ProductGrid } from "./product-card";
+import { SortSelect } from "./sort-select";
 
 export type SearchParams = Record<string, string | string[] | undefined>;
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 24;
 const SORTS = [
-    { value: "-updated_at", label: "Avval yangilari" },
-    { value: "final_price", label: "Avval arzonlari" },
-    { value: "-final_price", label: "Avval qimmatlari" },
-    { value: "name", label: "Nomi bo'yicha" },
-];
-const TYPES: Record<string, string> = { new: "is_new", top: "is_featured", sale: "on_sale" };
+  ["new", "Avval yangilari"],
+  ["cheap", "Avval arzonlari"],
+  ["expensive", "Avval qimmatlari"],
+  ["name", "Nomi bo'yicha"],
+] as const;
 
-const list = (value: string | string[] | undefined) => (Array.isArray(value) ? value : value ? [value] : []);
-const first = (value: string | string[] | undefined) => list(value)[0];
+const all = (v: string | string[] | undefined) => (Array.isArray(v) ? v : v ? [v] : []);
+const one = (v: string | string[] | undefined) => all(v)[0] ?? "";
+const digits = (v: string) => v.replace(/\D/g, ""); // "5 000 000" → "5000000"
 
-/** A mistyped filter or a page past the end shows an empty shelf, not the error page. */
-async function fetchProducts(query: URLSearchParams): Promise<Paged<Product>> {
-    const response = await fetch(`${API_URL}/api/products/?${query}`, { cache: "no-store" });
-    if (response.status === 400 || response.status === 404) return { count: 0, next: null, previous: null, results: [] };
-    if (!response.ok) throw new Error(`API products responded ${response.status}`);
-    return response.json();
+// page numbers around the current one: 1 … 4 5 6 … 12
+function pageNumbers(page: number, total: number): (number | null)[] {
+  const near = new Set([1, total, page - 1, page, page + 1].filter((n) => n >= 1 && n <= total));
+  const out: (number | null)[] = [];
+  [...near].sort((a, b) => a - b).forEach((n, i, list) => {
+    if (i > 0 && n - list[i - 1] > 1) out.push(null);
+    out.push(n);
+  });
+  return out;
 }
 
-export async function Catalog({ searchParams, category, brand, action }: {
-    searchParams: SearchParams;
-    category?: number;
-    brand?: number;
-    action: string;
+/** The product list with its filters. Filters are a plain GET form: they work without JavaScript and every
+ *  filtered view has its own address that can be shared. `path` is the page the form submits to. */
+/** The sidebar's "Bo'lim" list: where the visitor is, its neighbours, the way back. */
+export type Sections = { back?: { href: string; label: string }; all?: { href: string; count: number }; items: Category[]; active?: string };
+
+export async function Catalog({ searchParams, category, sections, path }: {
+  searchParams: SearchParams
+  category?: Category
+  sections: Sections
+  path: string
 }) {
-    const search = first(searchParams.search);
-    const type = first(searchParams.type);
-    const pickedBrands = list(searchParams.brand);
-    const priceMin = first(searchParams.price_min);
-    const priceMax = first(searchParams.price_max);
-    const inStock = first(searchParams.in_stock) === "1";
-    const sort = SORTS.some((s) => s.value === first(searchParams.ordering)) ? first(searchParams.ordering)! : SORTS[0].value;
-    const page = Math.max(Number(first(searchParams.page)) || 1, 1);
+  const q = one(searchParams.q).trim();
+  const brands = all(searchParams.brand).flatMap((b) => b.split(",")).filter(Boolean);
+  const priceMin = digits(one(searchParams.price_min));
+  const priceMax = digits(one(searchParams.price_max));
+  const inStock = one(searchParams.in_stock) === "1";
+  const sort = SORTS.some(([key]) => key === one(searchParams.sort)) ? one(searchParams.sort) : "new";
+  const page = Math.max(Number(one(searchParams.page)) || 1, 1);
 
-    // Only these visitor-supplied values reach the API.
-    const query = new URLSearchParams({ ordering: sort, page: String(page), page_size: String(PAGE_SIZE) });
-    if (category) query.set("category", String(category));
-    if (brand) query.set("brand", String(brand));
-    else if (pickedBrands.length) query.set("brand", pickedBrands.join(","));
-    if (search) query.set("search", search);
-    if (type && TYPES[type]) query.set(TYPES[type], "true");
-    if (inStock) query.set("is_in_stock", "true");
+  // only these visitor-supplied values reach the API
+  const query = new URLSearchParams({ sort, page: String(page), page_size: String(PAGE_SIZE) });
+  if (category) query.set("category", category.slug);
+  if (brands.length) query.set("brand", brands.join(","));
+  if (q) query.set("q", q);
+  if (priceMin) query.set("price_min", priceMin);
+  if (priceMax) query.set("price_max", priceMax);
+  if (inStock) query.set("in_stock", "true");
+  const [list, brandList] = await Promise.all([getProducts(query.toString()), getBrands(category?.slug)]);
+  const shownBrands = brandList.filter((b) => b.products > 0 || brands.includes(b.slug));
 
-    const [settings, brands] = await Promise.all([getSettings(), brand ? [] : api<NamedImage[]>("brands/")]);
-    // Customers think in so'm; the API filters on the stored USD price.
-    const toUsd = (price: string) => (settings.usd_rate ? (Number(price) / Number(settings.usd_rate)).toFixed(2) : price);
-    if (priceMin) query.set("price_min", toUsd(priceMin));
-    if (priceMax) query.set("price_max", toUsd(priceMax));
-    const products = await fetchProducts(query);
+  // the current address without one value (for the chips' ×) or with another page
+  const href = (drop: { key: string; value?: string } | null, page?: number) => {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(searchParams)) {
+      if (key === "page") continue;
+      all(value).flatMap((v) => (key === "brand" ? v.split(",") : [v])).forEach((v) => {
+        if (!(drop && drop.key === key && (drop.value === undefined || drop.value === v))) params.append(key, v);
+      });
+    }
+    if (page && page > 1) params.set("page", String(page));
+    return params.size ? `${path}?${params}` : path;
+  };
+  const chips = [
+    ...(q ? [{ label: `«${q}»`, href: href({ key: "q" }) }] : []),
+    ...brands.map((b) => ({ label: brandList.find((x) => x.slug === b)?.name ?? b, href: href({ key: "brand", value: b }) })),
+    ...(priceMin ? [{ label: `${som(Number(priceMin))} dan`, href: href({ key: "price_min" }) }] : []),
+    ...(priceMax ? [{ label: `${som(Number(priceMax))} gacha`, href: href({ key: "price_max" }) }] : []),
+    ...(inStock ? [{ label: "Sotuvda bor", href: href({ key: "in_stock" }) }] : []),
+  ];
+  // another section keeps the visitor's brands, price and stock choices
+  const keep = (target: string) => {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(searchParams)) if (key !== "page") all(value).forEach((v) => params.append(key, v));
+    return params.size ? `${target}?${params}` : target;
+  };
+  const sectionLinks = [
+    ...(sections.all ? [{ href: sections.all.href, label: "Hammasi", count: sections.all.count, active: !sections.active || sections.active === "" }] : []),
+    ...sections.items.map((c) => ({ href: `/catalog/${c.slug}`, label: c.name, count: c.products, active: c.slug === sections.active })),
+  ];
+  const totalPages = Math.max(1, Math.ceil(list.total / PAGE_SIZE));
+  const active = chips.length - (q ? 1 : 0);
+  const clear = q ? `${path}?q=${encodeURIComponent(q)}` : path;
 
-    const pageHref = (n: number) => {
-        const params = new URLSearchParams();
-        for (const [key, value] of Object.entries(searchParams)) {
-            if (key !== "page") list(value).forEach((v) => params.append(key, v));
-        }
-        params.set("page", String(n));
-        return `${action}?${params}`;
-    };
-    const activeFilters = pickedBrands.length + (priceMin ? 1 : 0) + (priceMax ? 1 : 0) + (inStock ? 1 : 0);
-    const clearParams = new URLSearchParams();
-    if (search) clearParams.set("search", search);
-    if (type) clearParams.set("type", type);
+  return (
+    <>
+      {/* phones: the sections as a row of pills (the sidebar is behind the "Filtr" button there) */}
+      {sectionLinks.length > 1 && (
+        <ul className="-mx-1 mb-3 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] lg:hidden">
+          {sections.back && <li className="flex-none"><Link href={keep(sections.back.href)} className="inline-flex min-h-9 items-center gap-1 rounded-full border border-line px-3 text-sm font-medium"><ChevronLeft className="size-4" aria-hidden />{sections.back.label}</Link></li>}
+          {sectionLinks.map((l) => (
+            <li key={l.href} className="flex-none">
+              <Link href={keep(l.href)} aria-current={l.active ? "page" : undefined}
+                className={`inline-flex min-h-9 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium whitespace-nowrap ${l.active ? "bg-ink text-white" : "bg-stage"}`}>
+                {l.label} <span className={l.active ? "text-white/60" : "text-muted"}>{l.count}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
 
-    return (
-        <div className="lg:grid lg:grid-cols-[16rem_1fr] lg:gap-8">
-            <details open={activeFilters > 0 || undefined} className="mb-4 border border-line" data-filters>
-                <summary className="flex min-h-12 cursor-pointer list-none items-center justify-center gap-2 font-medium [&::-webkit-details-marker]:hidden">
-                    <SlidersHorizontalIcon size={18} aria-hidden /> Filtr va saralash{activeFilters > 0 && ` (${activeFilters})`}
-                </summary>
-                <Form action={action} className="flex flex-col gap-5 border-t border-line p-4">
-                    {search && <input type="hidden" name="search" value={search} />}
-                    {type && <input type="hidden" name="type" value={type} />}
+      <div className="lg:grid lg:grid-cols-[16rem_1fr] lg:gap-8">
+        <aside className="mb-4 lg:mb-0 lg:self-start">
+          <FilterSheet active={active}>
+            <Form action={path} scroll={false} className="grid">
+              <AutoSubmit />
+              {q && <input type="hidden" name="q" value={q} />}
+              {(sectionLinks.length > 1 || sections.back) && (
+                <nav aria-label="Bo'limlar" className="hidden border-b border-line py-5 first:pt-0 lg:block">
+                  <p className="mb-2 text-sm font-bold">Bo'lim</p>
+                  {sections.back && (
+                    <Link href={keep(sections.back.href)} className="mb-1 flex min-h-9 items-center gap-1 rounded-md px-1 text-sm text-muted hover:text-ink">
+                      <ChevronLeft className="size-4" aria-hidden /> {sections.back.label}
+                    </Link>
+                  )}
+                  <ul className="grid">
+                    {sectionLinks.map((l) => (
+                      <li key={l.href}>
+                        <Link href={keep(l.href)} aria-current={l.active ? "page" : undefined}
+                          className={`flex min-h-9 items-center justify-between gap-2 rounded-md px-2.5 text-sm ${l.active ? "bg-ink font-semibold text-white" : "hover:bg-stage"}`}>
+                          {l.label} <span className={`text-xs ${l.active ? "text-white/60" : "text-muted"}`}>{l.count}</span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </nav>
+              )}
+              {sort !== "new" && <input type="hidden" name="sort" value={sort} />}
+              <fieldset className="border-b border-line py-5 first:pt-0">
+                <legend className="float-left mb-2.5 w-full text-sm font-bold">Narx, so'm</legend>
+                <div className="clear-both flex gap-2">
+                  <input name="price_min" inputMode="numeric" defaultValue={priceMin} placeholder="dan" aria-label="Eng past narx" className="field" />
+                  <input name="price_max" inputMode="numeric" defaultValue={priceMax} placeholder="gacha" aria-label="Eng yuqori narx" className="field" />
+                </div>
+              </fieldset>
+              {shownBrands.length > 0 && (
+                <fieldset className="border-b border-line py-5 first:pt-0">
+                  <legend className="float-left mb-2.5 w-full text-sm font-bold">Brend</legend>
+                  <div className="clear-both grid max-h-80 overflow-y-auto">
+                    {shownBrands.map((b) => (
+                      <label key={b.id} className="flex min-h-10 cursor-pointer items-center gap-2.5 rounded-md text-sm hover:bg-stage lg:px-1">
+                        <input type="checkbox" name="brand" value={b.slug} defaultChecked={brands.includes(b.slug)} className="size-[1.125rem] accent-teal-deep" />
+                        <span className="flex-1">{b.name}</span>
+                        <span className="text-xs text-muted">{b.products}</span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              )}
+              <fieldset className="border-b border-line py-5 first:pt-0">
+                <legend className="float-left mb-2.5 w-full text-sm font-bold">Mavjudligi</legend>
+                <label className="clear-both flex min-h-10 cursor-pointer items-center gap-2.5 text-sm">
+                  <input type="checkbox" name="in_stock" value="1" defaultChecked={inStock} className="size-[1.125rem] accent-teal-deep" />
+                  Faqat sotuvda borlari
+                </label>
+              </fieldset>
+              <div className="sticky bottom-0 -mx-4 grid gap-2 border-t border-line bg-white p-4 lg:static lg:mx-0 lg:border-0 lg:p-0 lg:pt-5">
+                <button className="btn btn-primary w-full">Natijani ko'rsatish</button>
+                {active > 0 && <Link href={clear} className="btn w-full text-sm text-teal-deep hover:underline">Filtrlarni tozalash</Link>}
+              </div>
+            </Form>
+          </FilterSheet>
+        </aside>
 
-                    <label className="block font-medium">
-                        Saralash
-                        <select name="ordering" defaultValue={sort} className="field mt-1 font-normal">
-                            {SORTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-                        </select>
-                    </label>
+        <div>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-muted"><b className="text-ink">{list.total}</b> ta mahsulot</p>
+            <SortSelect options={SORTS} value={sort} />
+          </div>
+          {chips.length > 0 && (
+            <ul className="mb-4 flex flex-wrap items-center gap-2" aria-label="Tanlangan filtrlar">
+              {chips.map((c) => (
+                <li key={c.label}>
+                  <Link href={c.href} aria-label={`Olib tashlash: ${c.label}`} className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-stage pr-2.5 pl-3.5 text-sm font-medium hover:bg-line">
+                    {c.label} <X className="size-3.5" aria-hidden />
+                  </Link>
+                </li>
+              ))}
+              {active > 1 && <li><Link href={clear} className="px-2 text-sm font-semibold text-teal-deep hover:underline">Hammasini tozalash</Link></li>}
+            </ul>
+          )}
 
-                    <fieldset>
-                        <legend className="font-medium">Narx, {settings.usd_rate ? "so'm" : "USD"}</legend>
-                        <div className="mt-1 flex gap-2">
-                            <input name="price_min" type="number" inputMode="numeric" min="0" defaultValue={priceMin} aria-label="Eng past narx" placeholder="dan" className="field" />
-                            <input name="price_max" type="number" inputMode="numeric" min="0" defaultValue={priceMax} aria-label="Eng yuqori narx" placeholder="gacha" className="field" />
-                        </div>
-                    </fieldset>
-
-                    {brands.length > 0 && (
-                        <fieldset>
-                            <legend className="font-medium">Brend</legend>
-                            <div className="mt-1 grid grid-cols-2 lg:grid-cols-1">
-                                {brands.map((b) => (
-                                    <label key={b.id} className="flex min-h-11 cursor-pointer items-center gap-2">
-                                        <input type="checkbox" name="brand" value={b.id} defaultChecked={pickedBrands.includes(String(b.id))} className="size-5 accent-teal-deep" />
-                                        {b.name}
-                                    </label>
-                                ))}
-                            </div>
-                        </fieldset>
-                    )}
-
-                    <label className="flex min-h-11 cursor-pointer items-center gap-2 font-medium">
-                        <input type="checkbox" name="in_stock" value="1" defaultChecked={inStock} className="size-5 accent-teal-deep" />
-                        Faqat sotuvdagilari
-                    </label>
-
-                    <button className="btn btn-primary !w-full">Natijani ko'rsatish</button>
-                    {activeFilters > 0 && <Link href={`${action}${clearParams.size ? `?${clearParams}` : ""}`} className="link flex min-h-11 items-center justify-center">Filtrlarni tozalash</Link>}
-                </Form>
-            </details>
-
-            <div>
-                <p className="mb-3 text-muted">{products.count} ta mahsulot</p>
-                {products.results.length > 0 ? (
-                    <ProductGrid products={products.results} usdRate={settings.usd_rate} />
-                ) : (
-                    <p className="bg-paper p-6">Bu shartlarga mos mahsulot yo'q. Filtrlarni kamaytirib ko'ring yoki <Link href="/contact" className="link">bizga yozing</Link>.</p>
-                )}
-                <Pagination page={page} totalPages={Math.ceil(products.count / PAGE_SIZE)} href={pageHref} />
+          <h2 className="sr-only">Mahsulotlar</h2>
+          {list.items.length > 0 ? (
+            <div data-results><ProductGrid products={list.items} narrow /></div>
+          ) : (
+            <div className="rounded-xl bg-stage p-10 text-center">
+              <p className="display text-lg">Bu shartlarga mos mahsulot topilmadi</p>
+              <p className="mt-2 text-muted">Filtrlarni kamaytiring yoki bizga yozing: kerakli mahsulotni topib beramiz.</p>
+              <div className="mt-5 flex flex-wrap justify-center gap-3">
+                {active > 0 && <Link href={clear} className="btn btn-primary">Filtrlarni tozalash</Link>}
+                <Link href="/contact" className="btn btn-outline">Bog'lanish</Link>
+              </div>
             </div>
+          )}
+
+          {totalPages > 1 && (
+            <nav aria-label="Sahifalar" className="mt-10 flex flex-wrap items-center justify-center gap-1.5">
+              {page > 1 && <Link href={href(null, page - 1)} aria-label="Oldingi sahifa" className="btn btn-outline size-11 p-0"><ChevronLeft className="size-5" /></Link>}
+              {pageNumbers(page, totalPages).map((n, i) => n === null
+                ? <span key={`gap${i}`} className="px-1 text-muted">…</span>
+                : <Link key={n} href={href(null, n)} aria-current={n === page ? "page" : undefined}
+                    className={`btn size-11 p-0 ${n === page ? "bg-ink text-white" : "btn-outline"}`}>{n}</Link>)}
+              {page < totalPages && <Link href={href(null, page + 1)} aria-label="Keyingi sahifa" className="btn btn-outline size-11 p-0"><ChevronRight className="size-5" /></Link>}
+            </nav>
+          )}
         </div>
-    );
+      </div>
+    </>
+  );
 }

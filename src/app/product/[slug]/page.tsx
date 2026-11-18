@@ -1,159 +1,158 @@
-import { PhoneIcon, SendIcon } from "lucide-react";
+import { ChevronDown, Phone, Send, ShieldCheck, Truck, Wrench } from "lucide-react";
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
-import { ImageSwiper } from "@/components/image-swiper";
-import { AddToCart, ProductGrid } from "@/components/product-card";
+import { AddToCart } from "@/components/add-to-cart";
+import { Breadcrumbs } from "@/components/breadcrumbs";
+import { Gallery } from "@/components/gallery";
+import { QuickOrder } from "@/components/quick-order";
+import { ReviewsSample } from "@/components/reviews-sample";
+import { ProductRail, STOCK } from "@/components/product-card";
 import { Section } from "@/components/section";
-import { api, getSettings, getSocialLinks } from "@/lib/api";
-import { youtubeId } from "@/lib/pure";
-import { formatPrice, jsonLd, SITE_URL, telHref } from "@/lib/site";
-import type { Paged, Product } from "@/lib/types";
+import { getProduct, getSettings, mediaUrl } from "@/lib/api";
+import { formatPhone, som, telHref } from "@/lib/format";
+import { jsonLd, productLd } from "@/lib/jsonld";
 
 type Props = { params: Promise<{ slug: string }> };
 
-const getProduct = (slug: string) => api<Product>(`products/${encodeURIComponent(slug)}/`);
-
-function describe(product: Product) {
-    const specs = product.specs.map((s) => `${s.name}: ${s.value}`).join(", ");
-    return (product.short_description || product.description || specs || `${product.name}, TECHVISION do'konida.`).slice(0, 160);
-}
+const describe = (p: { short_description: string; name: string; specs: { value: string }[] }) =>
+  (p.short_description || p.specs.slice(0, 4).map((s) => s.value).join(", ") || p.name).slice(0, 160);
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-    const product = await getProduct((await params).slug);
-    return {
-        title: product.name,
-        description: describe(product),
-        alternates: { canonical: `/product/${product.slug}` },
-        openGraph: { title: product.name, description: describe(product), images: product.images.map((i) => i.image) },
-    };
+  const p = await getProduct((await params).slug);
+  return {
+    title: p.name,
+    description: describe(p),
+    alternates: { canonical: `/product/${p.slug}` },
+    openGraph: { title: p.name, description: describe(p), images: p.images.slice(0, 1).map(mediaUrl) },
+  };
 }
 
-function Video({ title, url }: { title: string; url: string }) {
-    const id = youtubeId(url);
-    if (!id) return <a href={url} target="_blank" rel="noreferrer" className="link inline-flex min-h-11 items-center">{title}</a>;
-    return (
-        <div>
-            <h3 className="mb-2 font-medium">{title}</h3>
-            <iframe
-                src={`https://www.youtube-nocookie.com/embed/${id}`}
-                title={title}
-                loading="lazy"
-                allowFullScreen
-                allow="accelerometer; encrypted-media; gyroscope; picture-in-picture"
-                className="aspect-video w-full border-0 bg-paper"
-            />
-        </div>
-    );
+function youtubeId(url: string) {
+  return url.match(/(?:youtu\.be\/|v=|shorts\/|embed\/)([\w-]{11})/)?.[1];
 }
 
-export default async function Page({ params }: Props) {
-    const product = await getProduct((await params).slug);
-    const [settings, socials, related] = await Promise.all([
-        getSettings(),
-        getSocialLinks(),
-        product.category ? api<Paged<Product>>(`products/?category=${product.category}&is_in_stock=true&page_size=5`) : null,
-    ]);
-    const usdRate = settings.usd_rate;
-    const telegram = socials.find((link) => link.platform === "telegram");
-    const others = related?.results.filter((p) => p.id !== product.id).slice(0, 4) ?? [];
-    const videos = [
-        { title: "Obzor videosi", url: product.overview_video_url },
-        { title: "Qo'llanma videosi", url: product.tutorial_video_url },
-    ].filter((video) => video.url);
-    const schema = {
-        "@context": "https://schema.org",
-        "@type": "Product",
-        name: product.name,
-        description: describe(product),
-        image: product.images.map((i) => i.image),
-        ...(product.brand_details && { brand: { "@type": "Brand", name: product.brand_details.name } }),
-        offers: {
-            "@type": "Offer",
-            url: `${SITE_URL}/product/${product.slug}`,
-            // Must match the price visitors see, or search engines flag the listing.
-            ...(usdRate
-                ? { price: Math.round(Number(product.final_price) * Number(usdRate)), priceCurrency: "UZS" }
-                : { price: product.final_price, priceCurrency: "USD" }),
-            availability: `https://schema.org/${product.is_in_stock ? "InStock" : "OutOfStock"}`,
-        },
-    };
+export default async function ProductPage({ params }: Props) {
+  const [p, settings] = await Promise.all([getProduct((await params).slug), getSettings()]);
+  const stock = STOCK[p.stock_status];
+  const discount = p.price_som && p.old_price_som ? Math.round((1 - p.price_som / p.old_price_som) * 100) : 0;
+  const video = youtubeId(p.video_url);
+  const crumbs = [
+    { href: "/", label: "Bosh sahifa" }, { href: "/catalog", label: "Katalog" },
+    ...[p.parent_category, p.category].filter((c) => c !== null).map((c) => ({ href: `/catalog/${c.slug}`, label: c.name })),
+  ];
+  const key = p.specs.filter((s) => s.name !== "Xolati").slice(0, 6);
+  const price = p.price_som ? som(p.price_som) : "Narxini so'rang";
 
-    return (
-        <>
-            <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(schema)} />
-            <div className="wrap lg:mt-6 lg:grid lg:grid-cols-2 lg:gap-10">
-                <div>
-                    {product.category_details && (
-                        <Link href={`/categories/${product.category_details.slug}`} className="link inline-flex min-h-11 items-center lg:mb-2">{product.category_details.name}</Link>
-                    )}
-                    {product.images.length > 0 ? (
-                        <ImageSwiper
-                            slides={product.images.map((image) => ({ id: image.id, image: image.image, alt: product.name }))}
-                            frame="aspect-square border border-line"
-                            fit="object-contain"
-                            sizes="(min-width: 1024px) 50vw, 100vw"
-                        />
-                    ) : (
-                        <div className="aspect-square bg-paper" />
-                    )}
-                </div>
+  return (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(productLd(p))} />
+      <div className="wrap">
+        <Breadcrumbs items={crumbs} />
+        <div className="grid gap-8 lg:grid-cols-[1.15fr_1fr] lg:gap-12">
+          <Gallery urls={p.images.map(mediaUrl)} name={p.name} />
 
-                <div className="mt-4 lg:mt-11">
-                    <h1 className="h2">{product.name}</h1>
-                    {product.brand_details && <Link href={`/brands/${product.brand_details.slug}`} className="link inline-flex min-h-11 items-center">{product.brand_details.name}</Link>}
-                    {product.short_description && <p className="mt-1 text-muted">{product.short_description}</p>}
-
-                    <div className="mt-4">
-                        {product.discount > 0 && product.is_in_stock && (
-                            <p className="text-muted"><s>{formatPrice(product.price, usdRate)}</s> <span className="font-medium text-teal-deep">-{product.discount}%</span></p>
-                        )}
-                        <p className="h1">{formatPrice(product.final_price, usdRate)}</p>
-                        <p className={`mt-1 font-medium ${product.is_in_stock ? "text-teal-deep" : "text-muted"}`}>{product.is_in_stock ? "Sotuvda bor" : "Hozir sotuvda yo'q"}</p>
-                        {product.warranty && <p className="text-muted">Kafolat: {product.warranty}</p>}
-                    </div>
-
-                    <div className="mt-5 flex flex-col gap-3">
-                        {product.is_in_stock && <AddToCart product={product} />}
-                        {telegram ? (
-                            <a href={telegram.url} target="_blank" rel="noreferrer" className="btn btn-secondary !w-full"><SendIcon size={18} aria-hidden /> Telegramda so'rash</a>
-                        ) : settings.phone && (
-                            <a href={telHref(settings.phone)} className="btn btn-secondary !w-full"><PhoneIcon size={18} aria-hidden /> Qo'ng'iroq qilish</a>
-                        )}
-                    </div>
-
-                    {product.specs.length > 0 && (
-                        <section className="mt-8">
-                            <h2 className="h2 mb-3">Xususiyatlari</h2>
-                            <dl className="border-t border-line">
-                                {product.specs.map((spec) => (
-                                    <div key={spec.name} className="flex min-h-11 justify-between gap-4 border-b border-line py-2">
-                                        <dt className="text-muted">{spec.name}</dt>
-                                        <dd className="text-right font-medium">{spec.value}</dd>
-                                    </div>
-                                ))}
-                            </dl>
-                        </section>
-                    )}
-                </div>
+          {/* stays in view next to the gallery on desktop */}
+          <div className="grid gap-4 lg:sticky lg:top-24 lg:self-start">
+            <div>
+              {p.brand && (
+                <Link href={`/catalog?brand=${p.brand.slug}`} title={`${p.brand.name}: barcha mahsulotlar`}
+                  className="mb-3 inline-flex h-16 items-center rounded-xl border border-line bg-white px-4 hover:border-ink/30">
+                  {p.brand.logo
+                    ? <Image src={mediaUrl(p.brand.logo)} alt={p.brand.name} width={200} height={56} className="h-12 w-auto max-w-48 object-contain" />
+                    : <span className="font-semibold">{p.brand.name}</span>}
+                </Link>
+              )}
+              <h1 className="font-sans text-2xl leading-tight font-bold tracking-tight lg:text-[2rem]">{p.name}</h1>
+              <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                <span className={`flex items-center gap-1.5 font-medium ${stock.className}`}><span className={`size-2 rounded-full ${stock.dot}`} aria-hidden />{stock.label}</span>
+                {p.mpn && <span className="text-muted">Model: <span className="font-medium text-ink">{p.mpn}</span></span>}
+              </p>
             </div>
 
-            {product.description && (
-                <Section title="Tavsif"><p className="max-w-3xl whitespace-pre-wrap">{product.description}</p></Section>
-            )}
+            <div className="rounded-2xl border border-line p-5 lg:p-6">
+              {p.old_price_som && (
+                <p className="flex items-center gap-2 text-sm text-muted">
+                  <s>{som(p.old_price_som)}</s>
+                  {discount > 0 && <span className="badge rounded-full bg-red-600 text-white">-{discount}%</span>}
+                </p>
+              )}
+              <p className="text-3xl font-bold tracking-tight lg:text-4xl">{price}</p>
+              <div className="mt-5 grid gap-2.5 sm:grid-cols-2">
+                <AddToCart id={p.id} name={p.name} stock={p.stock_status} priced={p.price_som !== null} large />
+                {p.price_som !== null && p.stock_status !== "none" && <QuickOrder id={p.id} name={p.name} price={price} />}
+              </div>
+              <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm font-medium">
+                {settings.phone && <a href={telHref(settings.phone)} className="flex items-center gap-2 hover:underline"><Phone className="size-4" aria-hidden /> {formatPhone(settings.phone)}</a>}
+                {settings.telegram_url && <a href={settings.telegram_url} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:underline"><Send className="size-4" aria-hidden /> Telegramda so'rash</a>}
+              </div>
+              {/* only facts the shop states: the product's own warranty, delivery to the regions, its service centre */}
+              <ul className={`mt-5 grid gap-2 border-t border-line pt-5 text-center text-xs leading-tight ${p.warranty ? "grid-cols-3" : "grid-cols-2"}`}>
+                {p.warranty && <li className="rounded-xl bg-stage p-3"><ShieldCheck className="mx-auto mb-1.5 size-5" aria-hidden /><b className="block text-sm">{p.warranty}</b>kafolat</li>}
+                <li className="rounded-xl bg-stage p-3"><Truck className="mx-auto mb-1.5 size-5" aria-hidden /><b className="block text-sm">Yetkazib berish</b>viloyatlarga</li>
+                <li className="rounded-xl bg-stage p-3"><Wrench className="mx-auto mb-1.5 size-5" aria-hidden /><b className="block text-sm">Servis markazi</b>o'zimizda</li>
+              </ul>
+            </div>
 
-            {videos.length > 0 && (
-                <Section title="Videolar">
-                    <div className="grid gap-6 md:grid-cols-2">
-                        {videos.map((video) => <Video key={video.url} {...video} />)}
+            {key.length > 0 && (
+              <div className="rounded-2xl border border-line p-5 lg:p-6">
+                <p className="font-semibold">Asosiy xususiyatlar</p>
+                <dl className="mt-3 grid text-sm">
+                  {key.map((s) => (
+                    <div key={s.name} className="flex justify-between gap-4 border-b border-dashed border-line py-2 last:border-b-0">
+                      <dt className="flex-none text-muted">{s.name}</dt>
+                      <dd className="min-w-0 truncate text-right font-medium" title={s.value}>{s.value}</dd>
                     </div>
-                </Section>
+                  ))}
+                </dl>
+                {p.specs.length > key.length && <a href="#specs" className="mt-3 inline-flex items-center gap-1 text-sm font-semibold underline-offset-4 hover:underline">Barcha xususiyatlar <ChevronDown className="size-4" aria-hidden /></a>}
+              </div>
             )}
+          </div>
+        </div>
+      </div>
 
-            {others.length > 0 && (
-                <Section title="O'xshash mahsulotlar">
-                    <ProductGrid products={others} usdRate={usdRate} />
-                </Section>
-            )}
-        </>
-    );
+      {p.specs.length > 0 && (
+        <Section title="Xususiyatlari" id="specs">
+          <dl className="grid overflow-hidden rounded-2xl border border-line xl:grid-cols-2">
+            {[...p.specs, ...(p.mpn ? [{ name: "Model kodi", value: p.mpn }] : [])].map((s) => (
+              <div key={s.name} className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-4 border-b border-line px-5 py-3.5 text-sm last:border-b-0 lg:text-[0.95rem] xl:[&:nth-last-child(2):nth-child(odd)]:border-b-0 xl:odd:border-r">
+                <dt className="text-muted">{s.name}</dt>
+                <dd className="font-medium">{s.value}</dd>
+              </div>
+            ))}
+          </dl>
+        </Section>
+      )}
+
+      {p.description && (
+        <Section title="Tavsif"><p className="max-w-3xl leading-7 whitespace-pre-wrap">{p.description}</p></Section>
+      )}
+
+      {video && (
+        <Section title="Video">
+          <iframe src={`https://www.youtube-nocookie.com/embed/${video}`} title={`${p.name}: video`} loading="lazy" allowFullScreen
+            allow="accelerometer; encrypted-media; gyroscope; picture-in-picture" className="aspect-video w-full max-w-4xl rounded-2xl border-0 bg-stage" />
+        </Section>
+      )}
+
+      <ReviewsSample />
+
+      {p.similar.length > 0 && (
+        <Section title="O'xshash mahsulotlar" link={p.category ? { href: `/catalog/${p.category.slug}`, label: "Barchasi" } : undefined}>
+          <ProductRail products={p.similar} label="O'xshash mahsulotlar" />
+        </Section>
+      )}
+
+      {/* phones: the price and the cart button stay on screen (over the call / Telegram bar) */}
+      <div className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-3 border-t border-line bg-white px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] lg:hidden">
+        <div className="min-w-0 flex-1 leading-tight">
+          <p className="truncate text-xs text-muted">{p.name}</p>
+          <p className="text-lg font-bold whitespace-nowrap">{price}</p>
+        </div>
+        <div className="w-40 flex-none empty:hidden"><AddToCart id={p.id} name={p.name} stock={p.stock_status} priced={p.price_som !== null} large /></div>
+        {settings.phone && <a href={telHref(settings.phone)} aria-label="Qo'ng'iroq qilish" className="btn btn-outline size-11 flex-none p-0"><Phone className="size-5" aria-hidden /></a>}
+      </div>
+    </>
+  );
 }
