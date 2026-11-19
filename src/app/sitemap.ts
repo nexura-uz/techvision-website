@@ -1,6 +1,9 @@
 import type { MetadataRoute } from "next";
 import { SITE_URL, getCategories, getNews, getPages, getProducts, getServices } from "@/lib/api";
 
+// built per request (API answers stay cached 60 s): a build-time copy kept the empty catalog from before the import
+export const dynamic = "force-dynamic";
+
 // every page Google should know: the main pages, every category, every visible product, news and info pages
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [categories, news, pages, services] = await Promise.all([getCategories(), getNews(), getPages(), getServices()]);
