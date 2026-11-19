@@ -70,12 +70,12 @@ export default async function HomePage() {
         {tiles.length > 0 && <div className="grid grid-cols-2 gap-3 lg:flex lg:flex-col lg:gap-4">{tiles.map((g) => <HeroTile key={g.id} group={g} />)}</div>}
       </section>
 
-      <section aria-label="Afzalliklar" className="wrap mt-4 lg:mt-5">
-        <ul className="grid grid-cols-2 overflow-hidden rounded-xl border border-line lg:grid-cols-4">
-          {PROMISES.map(({ icon: Icon, title, text }, i) => (
-            <li key={title} className={`flex items-center gap-3 p-4 lg:p-5 ${i % 2 ? "" : "border-r border-line"} ${i < 2 ? "border-b border-line lg:border-b-0" : ""} ${i === 1 ? "lg:border-r" : ""}`}>
-              <span className="flex size-10 flex-none items-center justify-center rounded-full bg-stage"><Icon className="size-5 text-teal-deep" aria-hidden /></span>
-              <span className="leading-tight"><span className="block font-semibold">{title}</span><span className="text-sm text-muted">{text}</span></span>
+      <section aria-label="Afzalliklar" className="wrap mt-5 lg:mt-6">
+        <ul className="grid grid-cols-2 gap-x-4 gap-y-4 lg:grid-cols-4 lg:gap-x-6">
+          {PROMISES.map(({ icon: Icon, title, text }) => (
+            <li key={title} className="flex items-center gap-3">
+              <Icon className="size-6 flex-none text-ink" strokeWidth={1.75} aria-hidden />
+              <span className="text-sm leading-tight"><span className="block font-semibold">{title}</span><span className="text-muted">{text}</span></span>
             </li>
           ))}
         </ul>
