@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AddToCart } from "@/components/add-to-cart";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Gallery } from "@/components/gallery";
+import { PartPlaceholder } from "@/components/part-placeholder";
 import { QuickOrder } from "@/components/quick-order";
 import { ReviewsSample } from "@/components/reviews-sample";
 import { ProductRail, STOCK } from "@/components/product-card";
@@ -50,7 +51,9 @@ export default async function ProductPage({ params }: Props) {
       <div className="wrap">
         <Breadcrumbs items={crumbs} />
         <div className="grid gap-8 lg:grid-cols-[1.15fr_1fr] lg:gap-12">
-          <Gallery urls={p.images.map(mediaUrl)} name={p.name} />
+          {p.images.length > 0 ? <Gallery urls={p.images.map(mediaUrl)} name={p.name} /> : (
+            <div className="relative aspect-square rounded-2xl border border-line bg-white"><PartPlaceholder name={p.name} category={p.category?.name} className="w-1/4" /></div>
+          )}
 
           {/* stays in view next to the gallery on desktop */}
           <div className="grid gap-4 lg:sticky lg:top-24 lg:self-start">

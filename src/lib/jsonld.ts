@@ -27,11 +27,11 @@ export function productLd(p: Product) {
   };
 }
 
-/** The shop and each of its locations, for Google's map and search results. */
+/** The shop and each of its locations, for Google's map and search results. One object with "@graph", not a bare
+ *  array: some readers (browser extensions) expect "@context" at the top and throw on an array. */
 export function storesLd(stores: Store[], settings: Settings) {
   const sameAs = [settings.instagram_url, settings.telegram_url, settings.telegram_channel_url, settings.youtube_url].filter(Boolean);
-  return stores.map((s) => ({
-    "@context": "https://schema.org",
+  return { "@context": "https://schema.org", "@graph": stores.map((s) => ({
     "@type": "ComputerStore",
     name: s.name,
     url: SITE_URL,
@@ -40,5 +40,5 @@ export function storesLd(stores: Store[], settings: Settings) {
     ...(s.latitude && s.longitude && { geo: { "@type": "GeoCoordinates", latitude: Number(s.latitude), longitude: Number(s.longitude) } }),
     ...(s.image && { image: mediaUrl(s.image) }),
     ...(sameAs.length && { sameAs }),
-  }));
+  })) };
 }

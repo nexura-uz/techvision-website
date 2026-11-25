@@ -27,7 +27,7 @@ export type Store = {
 };
 export type StockStatus = "in_stock" | "to_order" | "on_the_way" | "none";
 export type ProductCard = {
-  id: number; name: string; slug: string; brand: string | null; image: string | null; images: string[]; specs: string[];
+  id: number; name: string; slug: string; brand: string | null; category?: string | null; image: string | null; images: string[]; specs: string[];
   price_som: number | null; old_price_som: number | null; stock_status: StockStatus; is_new: boolean; is_featured: boolean;
 };
 

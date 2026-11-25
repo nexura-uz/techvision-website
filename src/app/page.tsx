@@ -1,4 +1,4 @@
-import { ArrowRight, Cctv, ChevronDown, ChevronRight, Send, ShieldCheck, Truck, Wrench } from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronRight, CircuitBoard, Cpu, Fan, Gpu, HandCoins, HardDrive, MemoryStick, PcCase, Phone, Send, ShieldCheck, Truck, Wrench, Zap } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { BannerSlider } from "@/components/banner-slider";
@@ -7,15 +7,25 @@ import { ProductRail } from "@/components/product-card";
 import { ICONS, ServiceCards } from "@/components/service-cards";
 import { Section } from "@/components/section";
 import { type ServiceGroup, getBanners, getBrands, getCategories, getFaqs, getNews, getProducts, getServices, getSettings, getStores, mediaUrl } from "@/lib/api";
+import { telHref } from "@/lib/format";
 import { jsonLd, storesLd } from "@/lib/jsonld";
 
-// only promises the shop already makes: the warranty from its Instagram bio, delivery from its old FAQ
+// only promises the shop already makes: the warranty (Instagram bio), delivery (FAQ), paying on receipt (checkout), its service centre
 const PROMISES = [
   { icon: ShieldCheck, title: "2 yilgacha kafolat", text: "Mahsulotga qarab" },
   { icon: Truck, title: "Yetkazib berish", text: "Barcha viloyatlarga" },
-  { icon: Wrench, title: "Servis markazi", text: "Ta'mirlash va diagnostika" },
-  { icon: Cctv, title: "Kamera o'rnatish", text: "Uy, do'kon va ofislar" },
+  { icon: HandCoins, title: "Olganda to'lov", text: "Oldindan to'lov yo'q" },
+  { icon: Wrench, title: "O'z servis markazimiz", text: "Ta'mir va diagnostika" },
 ];
+
+// the "build me a PC" block: the parts, each opening its catalog section (by our category name)
+const PARTS = [
+  { icon: Cpu, name: "Protsessorlar", label: "Protsessor" }, { icon: Gpu, name: "Videokartalar", label: "Videokarta" },
+  { icon: CircuitBoard, name: "Platalar", label: "Plata" }, { icon: MemoryStick, name: "Operativ xotira (RAM)", label: "Operativ xotira" },
+  { icon: HardDrive, name: "SSD va disklar", label: "SSD va disk" }, { icon: PcCase, name: "Korpuslar", label: "Korpus" },
+  { icon: Zap, name: "Quvvat bloklari", label: "Quvvat bloki" }, { icon: Fan, name: "Kulerlar va sovutish", label: "Sovutish" },
+];
+const BUILD_STEPS = ["Byudjet va maqsadni aytasiz: o'yin, ofis, montaj yoki dizayn", "Usta qismlarni tanlab, narxini aytadi", "Yig'amiz va Windows o'rnatib beramiz"];
 
 /** The hero's right column: the service groups that carry the shop's margin, always in view. */
 function HeroTile({ group }: { group: ServiceGroup }) {
@@ -46,6 +56,7 @@ export default async function HomePage() {
   const tops = categories.filter((c) => c.parent_id === null && c.products > 0);
   const tiles = ["wrench", "cctv"].map((icon) => services.find((g) => g.icon === icon)).filter((g) => g !== undefined);
   const withLogos = brands.filter((b) => b.products > 0);
+  const pcGroup = services.find((g) => g.icon === "cpu");
 
   return (
     <>
@@ -70,12 +81,13 @@ export default async function HomePage() {
         {tiles.length > 0 && <div className="grid grid-cols-2 gap-3 lg:flex lg:flex-col lg:gap-4">{tiles.map((g) => <HeroTile key={g.id} group={g} />)}</div>}
       </section>
 
-      <section aria-label="Afzalliklar" className="wrap mt-5 lg:mt-6">
-        <ul className="grid grid-cols-2 gap-x-4 gap-y-4 lg:grid-cols-4 lg:gap-x-6">
+      {/* the promises close the hero: the same dark surface, so they read as one block with the slider and tiles */}
+      <section aria-label="Afzalliklar" className="wrap mt-3 lg:mt-4">
+        <ul className="band-dark grid grid-cols-2 gap-px overflow-hidden rounded-xl bg-white/10 lg:grid-cols-4">
           {PROMISES.map(({ icon: Icon, title, text }) => (
-            <li key={title} className="flex items-center gap-3">
-              <Icon className="size-6 flex-none text-ink" strokeWidth={1.75} aria-hidden />
-              <span className="text-sm leading-tight"><span className="block font-semibold">{title}</span><span className="text-muted">{text}</span></span>
+            <li key={title} className="flex flex-col items-start gap-2 bg-ink px-4 py-4 sm:flex-row sm:items-center sm:gap-3 lg:px-6 lg:py-5">
+              <Icon className="size-6 flex-none text-teal" strokeWidth={1.75} aria-hidden />
+              <span className="text-sm leading-tight"><span className="block font-semibold text-white">{title}</span><span className="text-white/60">{text}</span></span>
             </li>
           ))}
         </ul>
@@ -106,6 +118,59 @@ export default async function HomePage() {
           <ProductRail products={top.items.length ? top.items : newest.items} label="Top mahsulotlar" />
         </Section>
       )}
+
+      <section id="pc" className="wrap mt-14 lg:mt-20">
+        <div className="card grid overflow-hidden lg:grid-cols-[5fr_6fr]">
+          <div className="p-6 lg:p-10">
+            <p className="eyebrow">Kompyuter yig'ish</p>
+            <h2 className="mt-2 text-2xl lg:text-[2rem]">Sizga mos kompyuterni yig'ib beramiz</h2>
+            <p className="mt-3 max-w-lg text-muted">O'yin, o'qish, ofis yoki montaj uchun: byudjetingizga qarab qismlarni usta tanlaydi.</p>
+            {/* the steps as a build timeline: numbered stops joined by one line */}
+            <ol className="relative mt-7 space-y-5 before:absolute before:top-4 before:bottom-4 before:left-[15px] before:w-px before:bg-line">
+              {BUILD_STEPS.map((step, i) => (
+                <li key={step} className="relative flex items-start gap-4">
+                  <span className="display grid size-8 flex-none place-items-center rounded-full bg-ink text-sm text-teal ring-4 ring-white">{i + 1}</span>
+                  <span className="pt-1">{step}</span>
+                </li>
+              ))}
+            </ol>
+            <div className="mt-7 flex flex-wrap gap-3">
+              <Link href={pcGroup ? `/service/${pcGroup.slug}#request` : "/service?type=pc_build#request"} className="btn btn-primary btn-lg">So'rov qoldirish</Link>
+              {settings.telegram_url && <a href={settings.telegram_url} target="_blank" rel="noreferrer" className="btn btn-outline btn-lg"><Send className="size-4" aria-hidden /> Telegramda yozish</a>}
+              {settings.phone && <a href={telHref(settings.phone)} className="btn btn-outline btn-lg"><Phone className="size-4" aria-hidden /> Qo'ng'iroq</a>}
+            </div>
+          </div>
+          {/* a "blueprint" side: faint grid, a teal glow and a big case outline behind the parts */}
+          <div className="relative isolate flex flex-col justify-center overflow-hidden bg-ink p-6 text-white lg:p-10">
+            <div aria-hidden className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,rgb(255_255_255/0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgb(255_255_255/0.05)_1px,transparent_1px)] bg-[size:28px_28px]" />
+            <div aria-hidden className="absolute -top-24 -right-24 -z-10 size-80 rounded-full bg-teal/20 blur-3xl" />
+            <PcCase aria-hidden className="absolute -right-10 -bottom-12 -z-10 size-72 text-white/[0.04]" strokeWidth={1} />
+            <p className="eyebrow">Qismlar</p>
+            <p className="display mt-2 text-lg lg:text-xl">Yoki qismlarni o'zingiz tanlang</p>
+            <ul className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {PARTS.map(({ icon: Icon, name, label }) => {
+                const c = categories.find((x) => x.name === name);
+                const body = (
+                  <>
+                    <span className="grid size-11 place-items-center rounded-lg bg-teal/10 text-teal transition-colors group-hover:bg-teal group-hover:text-ink">
+                      <Icon className="size-6" strokeWidth={1.5} aria-hidden />
+                    </span>
+                    <span className="mt-4 block text-sm leading-tight font-semibold">{label}</span>
+                    {c && c.products > 0 && <span className="mt-0.5 text-xs text-white/55">{c.products} ta mahsulot</span>}
+                  </>
+                );
+                return (
+                  <li key={name}>
+                    {c && c.products > 0
+                      ? <Link href={`/catalog/${c.slug}`} className="group flex h-full flex-col rounded-xl border border-white/10 bg-ink-soft/80 p-4 backdrop-blur-sm transition-colors hover:border-teal/60">{body}</Link>
+                      : <span className="flex h-full flex-col rounded-xl border border-white/10 bg-ink-soft/80 p-4 opacity-50">{body}</span>}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </div>
+      </section>
 
       {services.length > 0 && (
         <section id="service" className="band-dark mt-14 py-12 lg:mt-20 lg:py-16">

@@ -1,4 +1,4 @@
-import { ImageIcon } from "lucide-react";
+import { PartPlaceholder } from "@/components/part-placeholder";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { type ProductCard as Card, type StockStatus, mediaUrl } from "@/lib/api";
@@ -28,7 +28,7 @@ export function ProductCard({ product }: { product: Card }) {
             <CardPhotos urls={(product.images?.length ? product.images : [product.image]).map(mediaUrl)} alt={product.name}
               sizes="(min-width: 1536px) 15vw, (min-width: 1024px) 22vw, (min-width: 768px) 30vw, 46vw" />
           ) : (
-            <ImageIcon className="absolute inset-0 m-auto size-10 text-ink/15" aria-hidden />
+            <PartPlaceholder name={product.name} category={product.category} />
           )}
           <div className="absolute top-3 left-3 flex gap-1">
             {discount > 0 && <span className="badge rounded-full bg-red-600 text-white">-{discount}%</span>}
@@ -36,7 +36,7 @@ export function ProductCard({ product }: { product: Card }) {
           </div>
         </div>
         <div className="flex flex-1 flex-col px-3.5 pb-3.5 lg:px-4 lg:pb-4">
-          {product.brand && <p className="text-xs text-muted">{product.brand}</p>}
+          {(product.brand || product.category) && <p className="truncate text-xs text-muted">{[product.brand, product.category].filter(Boolean).join(" · ")}</p>}
           <h3 className="mt-0.5 line-clamp-2 min-h-11 text-[0.9375rem] leading-[1.375rem] font-medium">{product.name}</h3>
           {product.specs.length > 0 && <p className="mt-1 line-clamp-1 text-xs text-muted">{product.specs.slice(0, 2).join(" · ")}</p>}
           <div className="mt-auto pt-3 sm:pr-12">

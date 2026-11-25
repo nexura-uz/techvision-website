@@ -1,4 +1,5 @@
-import { CircleCheck, ImageIcon, Minus, Phone, Plus, ShoppingCart, Trash2 } from "lucide-react";
+import { PartPlaceholder } from "@/components/part-placeholder";
+import { CircleCheck, Minus, Phone, Plus, ShoppingCart, Trash2 } from "lucide-react";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -83,7 +84,7 @@ export default async function CartPage({ searchParams }: Props) {
           {list.items.map((p) => (
             <li key={p.id} className="flex gap-4 rounded-2xl border border-line p-3 lg:p-4">
               <Link href={`/product/${p.slug}`} className="relative size-20 flex-none overflow-hidden rounded-xl bg-white lg:size-28">
-                {p.image ? <Image src={mediaUrl(p.image)} alt="" fill sizes="112px" className="object-contain p-1.5" /> : <ImageIcon className="absolute inset-0 m-auto size-6 text-line" aria-hidden />}
+                {p.image ? <Image src={mediaUrl(p.image)} alt="" fill sizes="112px" className="object-contain p-1.5" /> : <PartPlaceholder name={p.name} category={p.category} className="w-3/5" caption={false} />}
               </Link>
               <div className="flex min-w-0 flex-1 flex-col">
                 <div className="flex items-start justify-between gap-3">
