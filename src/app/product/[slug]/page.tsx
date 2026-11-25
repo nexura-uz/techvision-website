@@ -78,6 +78,11 @@ export default async function ProductPage({ params }: Props) {
                 </p>
               )}
               <p className="text-3xl font-bold tracking-tight lg:text-4xl">{price}</p>
+              {p.price_som !== null && p.price_changed_at && (
+                <p className="mt-1 text-xs text-muted">
+                  Narx {new Date(p.price_changed_at).toLocaleDateString("ru-RU", { timeZone: "Asia/Tashkent" })} holatiga
+                </p>
+              )}
               <div className="mt-5 grid gap-2.5 sm:grid-cols-2">
                 <AddToCart id={p.id} name={p.name} stock={p.stock_status} priced={p.price_som !== null} large />
                 {p.price_som !== null && p.stock_status !== "none" && <QuickOrder id={p.id} name={p.name} price={price} />}

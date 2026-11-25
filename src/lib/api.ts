@@ -47,7 +47,7 @@ export type Product = {
   brand: { name: string; slug: string; logo: string | null } | null;
   category: { name: string; slug: string } | null;
   parent_category: { name: string; slug: string } | null;
-  price_som: number | null; old_price_som: number | null; stock_status: StockStatus;
+  price_som: number | null; old_price_som: number | null; stock_status: StockStatus; price_changed_at: string;
   warranty: string; video_url: string; mpn: string | null; images: string[];
   specs: { name: string; value: string }[]; updated_at: string; similar: ProductCard[];
 };
